@@ -21,6 +21,7 @@ import FRP.Yampa.AffineSpace
 import FRP.Yampa.Task (repeatUntil, forAll)
 
 data Keycode =
+  AnyOf [Keycode] |
   KeyChar Char |
   KeyUp |
   KeyDown |
@@ -45,6 +46,7 @@ anyKey keys = let keySignals = parB $ map keyDown keys in
 
 keyDown :: Keycode -> SF WinInput Bool
 keyDown (KeyChar chr) = charDownI chr
+keyDown (AnyOf codes) = anyKey codes
 keyDown KeyUp       = keyPred HGL.isUpKey
 keyDown KeyDown     = keyPred HGL.isDownKey
 keyDown KeyLeft     = keyPred HGL.isLeftKey

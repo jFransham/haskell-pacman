@@ -53,10 +53,10 @@ playerMovement = let moveSpeed = 100 in
   where
     p0 = Point2 100.0 100.0
     vecFromInput = moveVecNorm
-      [KeyChar 'w', KeyUp]
-      [KeyChar 's', KeyDown]
-      [KeyChar 'a', KeyLeft]
-      [KeyChar 'd', KeyRight]
+      (AnyOf [KeyChar 'w', KeyUp])
+      (AnyOf [KeyChar 's', KeyDown])
+      (AnyOf [KeyChar 'a', KeyLeft])
+      (AnyOf [KeyChar 'd', KeyRight])
     tAtan2 = uncurry . flip $ atan2
 
 playerVisuals :: SF (Radians, Point2 Double) HGL.Graphic
@@ -65,8 +65,7 @@ playerVisuals =
     ev   <- repeatedly 0.2 () -< ()
     open <- accumHold False   -< ev `tag` not
     let openAmount   = if open then 0.5 else 0.05
-        mouthHeading = theta
-        (upT, downT) = (mouthHeading - openAmount, mouthHeading + openAmount)
+        (upT, downT) = (theta - openAmount, theta + openAmount)
     returnA -< exceptArc upT downT 10 (Point2 x y)
 
 -- 0 is at north, rotates clockwise
@@ -94,16 +93,16 @@ rotatePoint th (x, y) = (c * x - s * y, s * x + c * y)
     s = sin th
 
 moveVecNorm ::
-  [Keycode] ->
-    [Keycode] ->
-    [Keycode] ->
-    [Keycode] ->
+  Keycode ->
+    Keycode ->
+    Keycode ->
+    Keycode ->
     SF WinInput (Event (Vector2 Double))
 moveVecNorm up down left right = proc input -> do
-  up    <- anyKey up    -< input
-  down  <- anyKey down  -< input
-  left  <- anyKey left  -< input
-  right <- anyKey right -< input
+  up    <- keyDown up    -< input
+  down  <- keyDown down  -< input
+  left  <- keyDown left  -< input
+  right <- keyDown right -< input
   returnA -< fmap normalize .
     filterE (/= vector2 0 0) .
     fmap (uncurry vector2) .
