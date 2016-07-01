@@ -6,6 +6,7 @@ import WindowHelpers
 import IdentityList
 import Keycodes
 import Object
+import Graphics
 
 import qualified Graphics.HGL as HGL
 import System.Random
@@ -32,8 +33,8 @@ white = HGL.RGB 255 255 255
 runState :: GameState -> SF WinInput HGL.Graphic
 runState (GameState initial) = dSwitch initial runState
 
-initialState :: GameState
-initialState = GameState $ playerMovement >>> playerVisuals >>^ (\x -> (x, noEvent))
+initialState :: HGL.Brush -> GameState
+initialState brush = GameState $ player >>^ (\x -> (x, noEvent))
 
 {-
 initialState :: RandomGen g => g -> GameState

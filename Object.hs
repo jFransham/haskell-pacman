@@ -57,38 +57,65 @@ playerMovement = let moveSpeed = 100 in
       (AnyOf [KeyChar 's', KeyDown])
       (AnyOf [KeyChar 'a', KeyLeft])
       (AnyOf [KeyChar 'd', KeyRight])
-    tAtan2 = uncurry . flip $ atan2
+    tAtan2 = uncurry . flip $ atan2 -- atans (x, y) tuple
 
 playerVisuals :: SF (Radians, Point2 Double) HGL.Graphic
 playerVisuals =
-  proc (theta, Point2 x y) -> do
-    ev   <- repeatedly 0.2 () -< ()
-    open <- accumHold False   -< ev `tag` not
-    let openAmount   = if open then 0.5 else 0.05
-        (upT, downT) = (theta - openAmount, theta + openAmount)
-    returnA -< exceptArc upT downT 10 (Point2 x y)
+  let (minOpen, maxOpen) = (0.1, 0.6)
+      semiOpen           = minOpen + (maxOpen - minOpen) / 2
+      openingAmounts     = [minOpen, semiOpen, maxOpen] in
+    proc (theta, pos) -> do
+      ev   <- repeatedly 0.05 () -< ()
+      open <- accumHold 0 -<
+        ev `tag` ((`mod` pingPongListLength openingAmounts) . (+ 1))
+      let openAmount   = openingAmounts `pingPongListElement` open
+          (upT, downT) = (theta - openAmount, theta + openAmount)
+      returnA -<
+        HGL.withRGB (HGL.RGB 255 255 0) $
+          exceptArc
+            upT
+            downT
+            10
+            (rotatePoint theta (vector2 0 0.3))
+            pos
+
+pingPongListElement list i =
+  let index  = i `mod` pingPongListLength list
+      end    = length list - 1
+      lIndex = if index > end then end - (index `mod` end) else index
+  in list !! lIndex
+pingPongListLength list = length list + (max (length list - 2) 0)
 
 -- 0 is at north, rotates clockwise
-exceptArc :: Radians -> Radians -> Double -> Point2 Double-> HGL.Graphic
-exceptArc start end radius (Point2 x y) = HGL.regionToGraphic $
+exceptArc ::
+  Radians -> Radians -> Double -> Vector2 Double -> Point2 Double -> HGL.Graphic
+exceptArc start end radius offset (Point2 x y) = HGL.regionToGraphic $
   HGL.ellipseRegion
-    (both truncate (x - radius, y - radius))
-    (both truncate (x + radius, y + radius)) `HGL.subtractRegion`
-    HGL.polygonRegion triangle
+    (both truncate $ (x - radius, y - radius))
+    (both truncate $ (x + radius, y + radius)) `HGL.subtractRegion`
+      HGL.polygonRegion triangle
   where
     r' = radius / 2
     triangle = map (
         both truncate .
         (\(x', y') -> (x + x', y + y')) .
-        both (* radius)
+        both (* radius) .
+        vector2XY .
+        (^+^ offset)
       ) $ arcTriangleApprox start end
 
 arcTriangleApprox start end =
-  [(0, 0), rotatePoint start (0, -2), rotatePoint end (0, -2)]
+  [vector2 0 0,
+    rotatePoint start (vector2 0 $ -2),
+    rotatePoint end (vector2 0 $ -2)]
 
-rotatePoint :: Double -> (Double, Double) -> (Double, Double)
-rotatePoint th (x, y) = (c * x - s * y, s * x + c * y)
+rotatePointAround :: Radians -> Point2 Double -> Point2 Double -> Point2 Double
+rotatePointAround th origin pnt = pnt .+^ rotatePoint th (pnt .-. origin)
+
+rotatePoint :: Radians -> Vector2 Double -> Vector2 Double
+rotatePoint th = uncurry vector2 . rotateTup th . vector2XY
   where
+    rotateTup th (x, y) = (c * x - s * y, s * x + c * y)
     c = cos th
     s = sin th
 
